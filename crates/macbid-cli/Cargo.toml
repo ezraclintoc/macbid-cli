@@ -1,0 +1,22 @@
+[package]
+name = "macbid-cli"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Search, filter and watch Mac.Bid auctions from your terminal."
+keywords = ["macbid", "auction", "cli", "mcp"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "macbid"
+path = "src/main.rs"
+
+[dependencies]
+macbid-core = { path = "../macbid-core", version = "0.1.0" }
+clap.workspace = true
+comfy-table.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+rmcp.workspace = true
+schemars.workspace = true

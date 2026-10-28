@@ -1,0 +1,31 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/macbid-core",
+    "crates/macbid-cli",
+]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+
+[workspace.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "brotli", "zstd", "json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+
+# CLI-only
+clap = { version = "4", features = ["derive", "wrap_help", "env"] }
+comfy-table = "7"
+
+# MCP server (`macbid mcp serve`)
+rmcp = { version = "3.7", features = ["server", "macros", "transport-io"] }
+schemars = "1"
+
+[profile.release]
+lto = "thin"
+strip = "symbols"
+opt-level = "z"

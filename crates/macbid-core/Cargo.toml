@@ -1,0 +1,15 @@
+[package]
+name = "macbid-core"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Async Rust client for Mac.Bid's search API (lots, facets, lot detail)."
+keywords = ["macbid", "auctions", "api", "scraper"]
+categories = ["api-bindings"]
+
+[dependencies]
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
