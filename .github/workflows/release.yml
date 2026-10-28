@@ -1,0 +1,122 @@
+# Builds release binaries and attaches them to a GitHub Release.
+#
+# Targets: Linux (x86_64 + aarch64, static musl), macOS (Intel + Apple silicon),
+# Windows (x86_64). Nothing is published on push: a run is triggered either by
+# publishing a release, or manually, which is how assets get attached to a
+# release that already exists:
+#
+#   gh workflow run release.yml -f tag=v0.1.0 --ref main
+#
+# The tagged commit is what gets built, not the branch the run was dispatched
+# from.
+
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build and attach binaries to (e.g. v0.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  TAG: ${{ inputs.tag || github.event.release.tag_name }}
+  BIN: macbid
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            use-cross: true
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            use-cross: true
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.event.release.tag_name }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      # cross runs the build in a container that already has the musl/arm
+      # toolchains, so no linker setup is needed on the runner.
+      - name: Install cross
+        if: matrix.use-cross
+        run: cargo install cross --locked
+
+      - name: Build (cross)
+        if: matrix.use-cross
+        run: cross build --release --target ${{ matrix.target }} -p macbid-cli
+
+      - name: Build (native)
+        if: '!matrix.use-cross'
+        run: cargo build --release --target ${{ matrix.target }} -p macbid-cli
+
+      - name: Package
+        shell: bash
+        run: |
+          set -euo pipefail
+          NAME="${BIN}-${TAG}-${{ matrix.target }}"
+          mkdir -p "dist/${NAME}" out
+          if [ "${RUNNER_OS}" = "Windows" ]; then
+            cp "target/${{ matrix.target }}/release/${BIN}.exe" "dist/${NAME}/"
+          else
+            cp "target/${{ matrix.target }}/release/${BIN}" "dist/${NAME}/"
+          fi
+          cp README.md LICENSE "dist/${NAME}/"
+          if [ "${RUNNER_OS}" = "Windows" ]; then
+            powershell -NoProfile -Command \
+              "Compress-Archive -Path 'dist/${NAME}' -DestinationPath 'out/${NAME}.zip'"
+          else
+            tar -czf "out/${NAME}.tar.gz" -C dist "${NAME}"
+          fi
+          ls -l out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BIN }}-${{ matrix.target }}
+          path: out/*
+          if-no-files-found: error
+
+  checksums:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Write SHA256SUMS.txt
+        working-directory: artifacts
+        run: |
+          sha256sum -- * | tee SHA256SUMS.txt
+
+      - name: Upload archives and checksums to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" artifacts/* --clobber

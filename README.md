@@ -32,15 +32,40 @@ The two things the website can't do for you:
 
 ## Quick start
 
-Rust 1.85+:
+Prebuilt binaries are attached to every
+[release](https://github.com/ezraclintoc/macbid-cli/releases). Download, unpack,
+and put `macbid` somewhere on your `PATH`:
+
+| Platform | Asset |
+| --- | --- |
+| Linux x86_64 | `macbid-v0.1.0-x86_64-unknown-linux-musl.tar.gz` |
+| Linux arm64 | `macbid-v0.1.0-aarch64-unknown-linux-musl.tar.gz` |
+| macOS Apple silicon | `macbid-v0.1.0-aarch64-apple-darwin.tar.gz` |
+| macOS Intel | `macbid-v0.1.0-x86_64-apple-darwin.tar.gz` |
+| Windows x86_64 | `macbid-v0.1.0-x86_64-pc-windows-msvc.zip` |
+
+The Linux builds are **statically linked against musl**, so they run on any
+distribution regardless of glibc version (Alpine, old Ubuntu, a bare container).
+`SHA256SUMS.txt` is uploaded alongside them.
 
 ```console
-$ cargo install --path crates/macbid-cli
-# or, from a checkout:
-$ cargo run -- browse --category Laptops --limit 5
+$ curl -L -o macbid.tar.gz \
+    https://github.com/ezraclintoc/macbid-cli/releases/latest/download/macbid-v0.1.0-x86_64-unknown-linux-musl.tar.gz
+$ tar -xzf macbid.tar.gz
+$ install -m755 macbid-v0.1.0-x86_64-unknown-linux-musl/macbid ~/.local/bin/macbid
 ```
 
-Prebuilt binaries aren't published; build from source.
+On macOS, downloaded binaries are quarantined by Gatekeeper — clear it with
+`xattr -d com.apple.quarantine ~/.local/bin/macbid` (the builds are unsigned).
+
+Or build it yourself (Rust 1.85+):
+
+```console
+$ cargo install --git https://github.com/ezraclintoc/macbid-cli macbid-cli
+# from a checkout instead:
+$ cargo install --path crates/macbid-cli
+$ cargo run -- browse --category Laptops --limit 5
+```
 
 ## How to use
 
